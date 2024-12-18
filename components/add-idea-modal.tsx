@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useIdeaContext } from './providers'
 import { cn } from '@/lib/utils'
+import { supabase } from '@/lib/supabaseClient'
 
 interface AddIdeaModalProps {
   isOpen: boolean
@@ -25,20 +26,30 @@ export function AddIdeaModal({ isOpen, onClose }: AddIdeaModalProps) {
     )
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (idea.trim() && selectedCategories.length > 0) {
-      setIdeas(prevIdeas => [
-        ...prevIdeas,
-        {
-          id: prevIdeas.length + 1,
-          title: idea,
-          categories: selectedCategories,
-          votes: 0
-        }
-      ])
-      onClose()
-      setIdea('')
-      setSelectedCategories([])
+      const { data: newIdea, error } = await supabase
+        .from('ideas')
+        .insert([
+          {
+            title: idea,
+            categories: selectedCategories,
+            votes: 0
+          }
+        ])
+        .select()
+
+      if (error) {
+        console.error('Error adding idea:', error)
+        return
+      }
+
+      if (newIdea) {
+        setIdeas(prevIdeas => [...prevIdeas, newIdea[0]])
+        onClose()
+        setIdea('')
+        setSelectedCategories([])
+      }
     }
   }
 
