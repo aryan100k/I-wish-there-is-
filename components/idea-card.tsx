@@ -4,6 +4,7 @@ import { Idea } from '@/types/idea'
 import { useIdeaContext } from './providers'
 import { Button } from '@/components/ui/button'
 import confetti from 'canvas-confetti'
+import { supabase } from '@/lib/supabaseClient'
 
 interface IdeaCardProps {
   idea: Idea
@@ -12,18 +13,34 @@ interface IdeaCardProps {
 export default function IdeaCard({ idea }: IdeaCardProps) {
   const { categories, setIdeas } = useIdeaContext()
 
-  const handleVote = () => {
-    setIdeas(prevIdeas =>
-      prevIdeas.map(prevIdea =>
-        prevIdea.id === idea.id ? { ...prevIdea, votes: prevIdea.votes + 1 } : prevIdea
+  const handleVote = async () => {
+    // Update in Supabase
+    const { data, error } = await supabase
+      .from('ideas')
+      .update({ votes: idea.votes + 1 })
+      .eq('id', idea.id)
+      .select()
+
+    if (error) {
+      console.error('Error updating vote:', error)
+      return
+    }
+
+    // Update local state
+    if (data) {
+      setIdeas(prevIdeas =>
+        prevIdeas.map(prevIdea =>
+          prevIdea.id === idea.id ? data[0] : prevIdea
+        )
       )
-    )
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#ffffff', '#808080', '#404040']
-    })
+      
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#ffffff', '#808080', '#404040']
+      })
+    }
   }
 
   return (
